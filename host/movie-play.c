@@ -119,11 +119,11 @@ int readLSMV(int fd, unsigned short* keys) {
 	}
 	if (line[9] != '.') {
 		// Up
-		k ^= 0x020;
+		k ^= 0x040;
 	}
 	if (line[10] != '.') {
 		// Down
-		k ^= 0x020;
+		k ^= 0x080;
 	}
 
 	*keys = k;
