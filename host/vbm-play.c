@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "common.h"
 
@@ -76,6 +77,59 @@ int readBK2(int fd, unsigned short* keys) {
 	return 1;
 }
 
+int readLSMV(int fd, unsigned short* keys) {
+	char line[12] = "";
+	if (read(fd, line, 12) < 12) {
+		return 0;
+	}
+	if (line[0] != 'F') {
+		return 0;
+	}
+	if (line[2] != '|') {
+		return 0;
+	}
+	if (line[11] != '\n') {
+		return 0;
+	}
+
+	short k = 0;
+	if (line[3] != '.') {
+		// A
+		k ^= 0x001;
+	}
+	if (line[4] != '.') {
+		// B
+		k ^= 0x002;
+	}
+	if (line[5] != '.') {
+		// Select
+		k ^= 0x004;
+	}
+	if (line[6] != '.') {
+		// Start
+		k ^= 0x008;
+	}
+	if (line[7] != '.') {
+		// Right
+		k ^= 0x010;
+	}
+	if (line[8] != '.') {
+		// Left
+		k ^= 0x020;
+	}
+	if (line[9] != '.') {
+		// Up
+		k ^= 0x020;
+	}
+	if (line[10] != '.') {
+		// Down
+		k ^= 0x020;
+	}
+
+	*keys = k;
+	return 1;
+}
+
 int main(int argc, char** argv) {
 	printf("Opening tty %s\n", argv[1]);
 	int f = openTty(argv[1]);
@@ -93,7 +147,7 @@ int main(int argc, char** argv) {
 		printf("Detected VBM, seeking to %08X\n", offset);
 		lseek(m, offset, SEEK_SET);
 		readFrame = readVBM;
-	} else {
+	} else if (memcmp(header, "LogK", 4) == 0) {
 		printf("Probably BK2\n");
 		char crlf = '\0';
 		while (crlf != '\r') {
@@ -103,6 +157,10 @@ int main(int argc, char** argv) {
 			read(m, &crlf, 1);
 		}
 		readFrame = readBK2;
+	} else {
+		printf("Probably LSMV\n");
+		lseek(m, 0, SEEK_SET);
+		readFrame = readLSMV;
 	}
 
 	int running = 1;
